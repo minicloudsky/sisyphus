@@ -64,7 +64,7 @@ jobs:
       # ── goInception ────────────────────────────────────────────────
       - name: Download and start goInception
         run: |
-          wget -q "https://github.com/hanchuanchuan/goInception/releases/download/v1.3.0/goInception-linux-amd64-v1.3.0.tar.gz" \
+          wget -q "https://github.com/hanchuanchuan/goInception/releases/download/v1.3.0/goInception-linux-v1.3.0-94-g2f06c61b95.tar.gz" \
             -O /tmp/goInception.tar.gz
           mkdir -p /tmp/goinception
           tar -xzf /tmp/goInception.tar.gz -C /tmp/goinception
