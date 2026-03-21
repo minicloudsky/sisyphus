@@ -1,0 +1,109 @@
+syntax = "proto3";
+
+package conf.v1;
+
+option go_package = "sisyphus/server/internal/conf;conf";
+
+import "google/protobuf/duration.proto";
+
+message Bootstrap {
+  Server server = 1;
+  Data data = 2;
+  Auth auth = 3;
+  Inception inception = 4;
+  Partition partition = 5;
+  Notification notification = 6;
+  GhOst ghost = 7;
+  Tools tools = 8; // 工具二进制文件路径配置
+  Telemetry telemetry = 9; // OpenTelemetry配置
+}
+
+message Server {
+  message HTTP {
+    string network = 1;
+    string addr = 2;
+    google.protobuf.Duration timeout = 3;
+  }
+  message GRPC {
+    string network = 1;
+    string addr = 2;
+    google.protobuf.Duration timeout = 3;
+  }
+  HTTP http = 1;
+  GRPC grpc = 2;
+}
+
+message Data {
+  message Database {
+    string driver = 1;
+    string source = 2;
+  }
+  message Redis {
+    string network = 1;
+    string addr = 2;
+    string password = 3;
+    int32 db = 4;
+    google.protobuf.Duration dial_timeout = 5;
+    google.protobuf.Duration read_timeout = 6;
+    google.protobuf.Duration write_timeout = 7;
+  }
+  Database database = 1;
+  Redis redis = 2;
+}
+
+message Auth {
+  string jwt_secret = 1;
+  int64 jwt_expire = 2; // 过期时间(秒)
+}
+
+message Inception {
+  string host = 1;
+  int32 port = 2;
+  string username = 3;
+  string password = 4;
+  string backup_host = 5;
+  int32 backup_port = 6;
+  string backup_username = 7;
+  string backup_password = 8;
+}
+
+message Partition {
+  int32 add_days = 1; // 提前添加分区的天数，默认180
+  int32 max_add_count = 2; // 一次最多添加的分区数量，默认30
+}
+
+message Notification {
+  message Email {
+    string host = 1;
+    int32 port = 2;
+    string username = 3;
+    string password = 4;
+    repeated string receivers = 5; // 接收者邮箱列表
+  }
+  message DingTalk {
+    string webhook = 1; // 钉钉机器人webhook地址
+    repeated string phones = 2; // @的手机号列表
+  }
+  Email email = 1;
+  DingTalk dingtalk = 2;
+}
+
+message GhOst {
+  string socket_dir = 1; // socket文件目录，默认 /data/ghost/socket/
+  string log_dir = 2;    // 日志文件目录，默认 /data/ghost/log/
+  string panic_dir = 3;  // panic文件目录，默认 /data/ghost/panic/
+  string binary_path = 4; // gh-ost二进制文件路径，默认 /usr/local/bin/gh-ost
+}
+
+message Tools {
+  string pt_archiver_path = 1; // pt-archiver二进制文件路径，默认 /usr/local/bin/pt-archiver
+  string gh_ost_path = 2;      // gh-ost二进制文件路径，默认 /usr/local/bin/gh-ost
+  string goinception_path = 3; // goInception二进制文件路径（如果使用本地模式），默认空
+}
+
+message Telemetry {
+  bool enabled = 1; // 是否启用OpenTelemetry
+  string otlp_endpoint = 2; // OTLP endpoint地址，例如: localhost:4317
+  string service_name = 3; // 服务名称，默认 sisyphus
+  string service_version = 4; // 服务版本，默认 v1.0.0
+}

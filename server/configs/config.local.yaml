@@ -1,0 +1,45 @@
+server:
+  http:
+    addr: 0.0.0.0:8000
+    timeout: 5000000000      # 5秒，单位：纳秒
+  grpc:
+    addr: 0.0.0.0:9000
+    timeout: 5000000000      # 5秒，单位：纳秒
+
+data:
+  database:
+    driver: mysql
+    # 请根据实际情况修改密码，如果无密码则使用: root@tcp(127.0.0.1:3306)/sisyphus?...
+    source: root:root123@tcp(127.0.0.1:3306)/sisyphus?charset=utf8mb4&parseTime=True&loc=Local
+  redis:
+    network: tcp
+    addr: 127.0.0.1:6379
+    password: "redis123"
+    db: 0
+    dial_timeout: 5000000000   # 5秒，单位：纳秒
+    read_timeout: 3000000000   # 3秒，单位：纳秒
+    write_timeout: 3000000000  # 3秒，单位：纳秒
+
+auth:
+  jwt_secret: sisyphus-dev-secret-key-please-change-in-production
+  jwt_expire: 86400  # 24小时
+
+inception:
+  host: 127.0.0.1
+  port: 4000
+  username: root
+  password: ""
+  backup_host: 127.0.0.1
+  backup_port: 3306
+  backup_username: root
+  backup_password: "root123"
+
+ghost:
+  socket_dir: /data/ghost/socket/
+  log_dir: /data/ghost/log/
+  panic_dir: /data/ghost/panic/
+  binary_path: /usr/local/bin/gh-ost
+
+tools:
+  pt_archiver_path: /usr/local/bin/pt-archiver
+  gh_ost_path: /usr/local/bin/gh-ost

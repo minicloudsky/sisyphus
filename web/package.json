@@ -1,0 +1,43 @@
+{
+  "name": "sisyphus-web",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Sisyphus web UI (React + Umi + Ant Design)",
+  "scripts": {
+    "dev": "source ~/.nvm/nvm.sh 2>/dev/null; nvm use 18 >/dev/null 2>&1; umi dev",
+    "build": "source ~/.nvm/nvm.sh 2>/dev/null; nvm use 18 >/dev/null 2>&1; umi build",
+    "start": "npm run dev",
+    "lint": "umi lint",
+    "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css,less,scss,md}\"",
+    "analyze": "cross-env ANALYZE=1 umi build"
+  },
+  "dependencies": {
+    "@ant-design/icons": "^5.2.6",
+    "@monaco-editor/react": "^4.6.0",
+    "@umijs/max": "^4.2.0",
+    "ahooks": "^3.7.8",
+    "antd": "^5.12.0",
+    "axios": "^1.13.2",
+    "dayjs": "^1.11.10",
+    "file-saver": "^2.0.5",
+    "lodash": "^4.17.21",
+    "monaco-editor": "^0.45.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "xlsx": "^0.18.5",
+    "zustand": "^4.4.7"
+  },
+  "devDependencies": {
+    "@types/file-saver": "^2.0.7",
+    "@types/lodash": "^4.14.202",
+    "@types/react": "^18.2.43",
+    "@types/react-dom": "^18.2.17",
+    "@umijs/lint": "^4.2.0",
+    "cross-env": "^7.0.3",
+    "prettier": "^3.1.1",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

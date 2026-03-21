@@ -1,0 +1,226 @@
+name: E2E Tests
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+    paths:
+      - 'e2e/**'
+      - 'web/**'
+      - 'server/**'
+      - 'migrations/**'
+      - '.github/workflows/e2e.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write # upload-artifact
+
+concurrency:
+  group: e2e-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    name: Playwright E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ''
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+          MYSQL_DATABASE: sisyphus
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ── Database init ──────────────────────────────────────────────
+      - name: Initialize database
+        run: |
+          mysql -h 127.0.0.1 -u root sisyphus < migrations/init.sql
+          mysql -h 127.0.0.1 -u root sisyphus < migrations/test_data.sql
+
+      # ── goInception ────────────────────────────────────────────────
+      - name: Download and start goInception
+        run: |
+          wget -q "https://github.com/hanchuanchuan/goInception/releases/download/v1.3.0/goInception-linux-amd64-v1.3.0.tar.gz" \
+            -O /tmp/goInception.tar.gz
+          mkdir -p /tmp/goinception
+          tar -xzf /tmp/goInception.tar.gz -C /tmp/goinception
+          chmod +x /tmp/goinception/goInception
+
+          cat > /tmp/goinception/inception.cnf << 'EOF'
+          [inception]
+          general_log      = 1
+          enable_nullable  = 0
+          check_primary_key = 1
+          check_column_comment = 0
+          EOF
+
+          /tmp/goinception/goInception --config=/tmp/goinception/inception.cnf &
+          # Wait for goInception to be ready on port 4000
+          for i in $(seq 1 20); do
+            if mysql -h 127.0.0.1 -P 4000 -u root --connect-timeout=2 -e "select 1" &>/dev/null; then
+              echo "goInception is ready"
+              break
+            fi
+            sleep 2
+          done
+
+      # ── Backend ────────────────────────────────────────────────────
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache-dependency-path: server/go.sum
+
+      - name: Build backend
+        working-directory: server
+        run: go build -o sisyphus ./cmd/sisyphus
+
+      - name: Write CI config
+        working-directory: server
+        run: |
+          cat > configs/config.ci.yaml << 'EOF'
+          server:
+            http:
+              addr: 0.0.0.0:8000
+              timeout: 5000000000
+            grpc:
+              addr: 0.0.0.0:9000
+              timeout: 5000000000
+
+          data:
+            database:
+              driver: mysql
+              source: root:@tcp(127.0.0.1:3306)/sisyphus?charset=utf8mb4&parseTime=True&loc=Local
+            redis:
+              network: tcp
+              addr: 127.0.0.1:6379
+              password: ""
+              db: 0
+              dial_timeout: 5000000000
+              read_timeout: 3000000000
+              write_timeout: 3000000000
+
+          auth:
+            jwt_secret: ci-test-secret-key-32-characters-ok
+            jwt_expire: 86400
+
+          inception:
+            host: 127.0.0.1
+            port: 4000
+            username: root
+            password: ""
+            backup_host: 127.0.0.1
+            backup_port: 3306
+            backup_username: root
+            backup_password: ""
+
+          ghost:
+            socket_dir: /tmp/ghost/socket/
+            log_dir: /tmp/ghost/log/
+            panic_dir: /tmp/ghost/panic/
+            binary_path: /usr/local/bin/gh-ost
+
+          tools:
+            pt_archiver_path: /usr/local/bin/pt-archiver
+            gh_ost_path: /usr/local/bin/gh-ost
+
+          telemetry:
+            enabled: false
+          EOF
+
+          mkdir -p /tmp/ghost/socket /tmp/ghost/log /tmp/ghost/panic
+
+      - name: Start backend
+        working-directory: server
+        run: |
+          ./sisyphus -conf configs/config.ci.yaml > /tmp/backend.log 2>&1 &
+          # Wait for HTTP to be ready
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8000/health &>/dev/null || \
+               curl -sf http://localhost:8000/api/v1/auth/login -X POST &>/dev/null; then
+              echo "Backend is ready"
+              break
+            fi
+            sleep 2
+          done
+
+      # ── Frontend ───────────────────────────────────────────────────
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install and build frontend
+        working-directory: web
+        run: |
+          npm ci
+          npm run build
+
+      - name: Serve frontend
+        run: |
+          npx --yes serve web/dist -p 8001 &
+          # Wait for frontend to be ready
+          for i in $(seq 1 20); do
+            if curl -sf http://localhost:8001 &>/dev/null; then
+              echo "Frontend is ready"
+              break
+            fi
+            sleep 2
+          done
+
+      # ── Playwright ─────────────────────────────────────────────────
+      - name: Install Playwright
+        working-directory: e2e
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Run E2E tests
+        working-directory: e2e
+        run: npx playwright test
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: e2e/playwright-report/
+          retention-days: 14
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: e2e/test-results/
+          retention-days: 7
+
+      - name: Print backend log on failure
+        if: failure()
+        run: cat /tmp/backend.log || true

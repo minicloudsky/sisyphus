@@ -1,0 +1,14 @@
+---
+description: Umi/React frontend — API client, i18n, Kratos response shape
+globs: web/src/**/*
+alwaysApply: false
+---
+
+# Sisyphus web
+
+- **API**: Prefer `web/src/services/api.ts` and existing Axios `request()` wrapper (`baseURL: '/api'`). Bearer token is attached in the client interceptor.
+- **Kratos / list APIs**: Pagination and field names may use snake_case query params — reuse helpers in `api.ts` (`kratosPageRequestQuery`, `buildKratosPagedListQuery`, etc.) instead of ad-hoc URLs.
+- **Success checks**: Use `isCommonResponseOk` from `@/utils/kratosResponse` for envelopes with `code` / `message`.
+- **Binary downloads**: If an endpoint returns JSON with a `downloadUrl`, follow up with a **GET** using `responseType: 'blob'` — do not treat the JSON POST response as the file.
+- **i18n**: Use `useIntl` / `formatMessage` from `@/locales`. Add strings to **both** `en-US` and `zh-CN` (including `*.part2.ts` where the page’s keys live).
+- **UI**: Match existing Ant Design + ProComponents patterns, spacing, and layout in nearby pages.

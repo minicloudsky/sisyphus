@@ -1,0 +1,9 @@
+bin/
+*.exe
+*.test
+*.out
+.git
+.gitignore
+*.md
+exports/
+configs/config.local.yaml

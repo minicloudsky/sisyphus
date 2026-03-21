@@ -1,0 +1,315 @@
+syntax = "proto3";
+
+package api.v1;
+
+option go_package = "sisyphus/server/api/v1;v1";
+
+import "google/api/annotations.proto";
+import "proto/v1/common.proto";
+
+// SQL工单服务
+service SQLOrderService {
+  // 直接审核SQL（不需要工单ID）- 使用独立路径避免路由冲突
+  rpc ReviewSQL(ReviewSQLRequest) returns (ReviewSQLResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/sql-review"
+      body: "*"
+    };
+  }
+  // 检查SQL类型
+  rpc CheckSQLType(CheckSQLTypeRequest) returns (CheckSQLTypeResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/sql-orders/check-sql-type"
+      body: "*"
+    };
+  }
+  // 创建工单
+  rpc CreateOrder(CreateOrderRequest) returns (CreateOrderResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/sql-orders"
+      body: "*"
+    };
+  }
+  // 获取工单列表
+  rpc ListOrders(ListOrdersRequest) returns (ListOrdersResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/sql-orders"
+    };
+  }
+  // 获取工单详情
+  rpc GetOrder(GetOrderRequest) returns (GetOrderResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/sql-orders/{id}"
+    };
+  }
+  // 审核通过
+  rpc ApproveOrder(ApproveOrderRequest) returns (ApproveOrderResponse) {
+    option (google.api.http) = {
+      put: "/api/v1/sql-orders/{id}/approve"
+      body: "*"
+    };
+  }
+  // 审核驳回
+  rpc RejectOrder(RejectOrderRequest) returns (RejectOrderResponse) {
+    option (google.api.http) = {
+      put: "/api/v1/sql-orders/{id}/reject"
+      body: "*"
+    };
+  }
+  // 执行工单
+  rpc ExecuteOrder(ExecuteOrderRequest) returns (ExecuteOrderResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/sql-orders/{id}/execute"
+      body: "*"
+    };
+  }
+  // 审核SQL
+  rpc AuditSQL(AuditSQLRequest) returns (AuditSQLResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/sql-orders/{id}/audit"
+      body: "*"
+    };
+  }
+  // 获取执行记录
+  rpc GetOrderRecords(GetOrderRecordsRequest) returns (GetOrderRecordsResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/sql-orders/{id}/records"
+    };
+  }
+  // 获取工单明细
+  rpc GetOrderItems(GetOrderItemsRequest) returns (GetOrderItemsResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/sql-orders/{id}/items"
+    };
+  }
+  // 获取回滚SQL
+  rpc GetSQLOrderRollbackSQLs(GetSQLOrderRollbackSQLsRequest) returns (GetSQLOrderRollbackSQLsResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/sql-orders/{id}/rollback-sqls"
+    };
+  }
+}
+
+// 创建工单请求
+message CreateOrderRequest {
+  uint64 instance_id = 1;
+  string database_name = 2;
+  string sql_content = 3;
+  int32 order_type = 4; // 0-DDL, 1-DML, 2-导出（与库表、前端展示一致）
+  string remark = 5;
+  bool need_backup = 6;
+  int32 execute_method = 7; // 0-自动选择, 1-gh-ost, 2-goInception
+}
+
+// 创建工单响应
+message CreateOrderResponse {
+  int32 code = 1;
+  string message = 2;
+  SQLOrder data = 3;
+}
+
+// 工单列表请求
+message ListOrdersRequest {
+  int32 page = 1;
+  int32 page_size = 2;
+  int32 status = 3; // 可选
+  uint64 submitter_id = 4; // 可选
+}
+
+// 工单列表响应
+message ListOrdersResponse {
+  int32 code = 1;
+  string message = 2;
+  ListOrdersData data = 3;
+}
+
+message ListOrdersData {
+  repeated SQLOrder list = 1;
+  PageResponse page = 2;
+}
+
+// 获取工单请求
+message GetOrderRequest {
+  uint64 id = 1;
+}
+
+// 获取工单响应
+message GetOrderResponse {
+  int32 code = 1;
+  string message = 2;
+  SQLOrder data = 3;
+}
+
+// 审核通过请求
+message ApproveOrderRequest {
+  uint64 id = 1;
+}
+
+// 审核通过响应
+message ApproveOrderResponse {
+  int32 code = 1;
+  string message = 2;
+}
+
+// 审核驳回请求
+message RejectOrderRequest {
+  uint64 id = 1;
+  string reason = 2;
+}
+
+// 审核驳回响应
+message RejectOrderResponse {
+  int32 code = 1;
+  string message = 2;
+}
+
+// 执行工单请求
+message ExecuteOrderRequest {
+  uint64 id = 1;
+  int32 execute_method = 2; // 0-自动选择, 1-gh-ost, 2-goInception
+}
+
+// 执行工单响应
+message ExecuteOrderResponse {
+  int32 code = 1;
+  string message = 2;
+}
+
+// 检查SQL类型请求
+message CheckSQLTypeRequest {
+  string sql = 1;
+}
+
+// 检查SQL类型响应
+message CheckSQLTypeResponse {
+  int32 code = 1;
+  string message = 2;
+  CheckSQLTypeData data = 3;
+}
+
+message CheckSQLTypeData {
+  repeated string types = 1;
+  bool can_auto_execute = 2;
+}
+
+// 审核SQL请求
+message AuditSQLRequest {
+  uint64 id = 1;
+  string database_name = 2;
+}
+
+// 审核SQL响应
+message AuditSQLResponse {
+  int32 code = 1;
+  string message = 2;
+  repeated SQLReviewRecord data = 3;
+}
+
+// 直接审核SQL请求
+message ReviewSQLRequest {
+  uint64 instance_id = 1;
+  string database_name = 2;
+  string sql_content = 3;
+}
+
+// 直接审核SQL响应
+message ReviewSQLResponse {
+  int32 code = 1;
+  string message = 2;
+  repeated SQLReviewRecord data = 3;
+}
+
+// 获取执行记录请求
+message GetOrderRecordsRequest {
+  uint64 id = 1;
+}
+
+// 获取执行记录响应
+message GetOrderRecordsResponse {
+  int32 code = 1;
+  string message = 2;
+  repeated SQLReviewRecord data = 3;
+}
+
+// 获取工单明细请求
+message GetOrderItemsRequest {
+  uint64 id = 1;
+}
+
+// 获取工单明细响应
+message GetOrderItemsResponse {
+  int32 code = 1;
+  string message = 2;
+  repeated SQLOrderItem data = 3;
+}
+
+// SQL工单
+message SQLOrder {
+  uint64 id = 1;
+  string work_id = 2;
+  uint64 instance_id = 3;
+  string database_name = 4;
+  string sql_content = 5;
+  int32 order_type = 6;
+  int32 status = 7;
+  int32 risk_level = 8;
+  uint64 submitter_id = 9;
+  uint64 auditor_id = 10;
+  uint64 executor_id = 11;
+  string reject_reason = 12;
+  string remark = 13;
+  bool need_backup = 14;
+  int32 execute_method = 15;
+  string created_at = 16;
+  string updated_at = 17;
+}
+
+// SQL审核记录
+message SQLReviewRecord {
+  uint64 id = 1;
+  uint64 order_id = 2;
+  int32 sequence = 3;
+  string sql_text = 4;
+  int32 error_level = 5;
+  string error_message = 6;
+  string stage_status = 7;
+  int32 affected_rows = 8;
+  string execute_time = 9;
+  string sql_hash = 10;
+  string backup_db_name = 11;
+}
+
+// SQL工单明细
+message SQLOrderItem {
+  uint64 id = 1;
+  uint64 order_id = 2;
+  int32 sequence = 3;
+  string sql_text = 4;
+  int32 status = 5;
+  string error_message = 6;
+  int32 affected_rows = 7;
+  string execute_time = 8;
+}
+
+// 获取回滚SQL请求
+message GetSQLOrderRollbackSQLsRequest {
+  uint64 id = 1;
+}
+
+// 获取回滚SQL响应
+message GetSQLOrderRollbackSQLsResponse {
+  int32 code = 1;
+  string message = 2;
+  repeated SQLOrderRollbackSQL data = 3;
+}
+
+// SQL工单回滚SQL
+message SQLOrderRollbackSQL {
+  uint64 id = 1;
+  uint64 order_id = 2;
+  string backup_db_name = 3;
+  string opid_time = 4;
+  string table_name = 5;
+  string rollback_sql = 6;
+  string created_at = 7;
+}

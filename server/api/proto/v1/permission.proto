@@ -1,0 +1,367 @@
+syntax = "proto3";
+
+package api.v1;
+
+option go_package = "sisyphus/server/api/v1;v1";
+
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+import "proto/v1/common.proto";
+
+// 权限管理服务
+service PermissionService {
+  // 创建权限
+  rpc CreatePermission(CreatePermissionRequest) returns (CreatePermissionResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/permissions"
+      body: "*"
+    };
+  }
+  // 更新权限
+  rpc UpdatePermission(UpdatePermissionRequest) returns (CommonResponse) {
+    option (google.api.http) = {
+      put: "/api/v1/permissions/{id}"
+      body: "*"
+    };
+  }
+  // 删除权限
+  rpc DeletePermission(DeletePermissionRequest) returns (CommonResponse) {
+    option (google.api.http) = {
+      delete: "/api/v1/permissions/{id}"
+    };
+  }
+  // 获取权限详情
+  rpc GetPermission(GetPermissionRequest) returns (GetPermissionResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/permissions/{id}"
+    };
+  }
+  // 获取权限列表
+  rpc ListPermissions(ListPermissionsRequest) returns (ListPermissionsResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/permissions"
+    };
+  }
+  // 创建角色
+  rpc CreateRole(CreateRoleRequest) returns (CreateRoleResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/roles"
+      body: "*"
+    };
+  }
+  // 更新角色
+  rpc UpdateRole(UpdateRoleRequest) returns (CommonResponse) {
+    option (google.api.http) = {
+      put: "/api/v1/roles/{id}"
+      body: "*"
+    };
+  }
+  // 删除角色
+  rpc DeleteRole(DeleteRoleRequest) returns (CommonResponse) {
+    option (google.api.http) = {
+      delete: "/api/v1/roles/{id}"
+    };
+  }
+  // 获取角色详情
+  rpc GetRole(GetRoleRequest) returns (GetRoleResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/roles/{id}"
+    };
+  }
+  // 获取角色列表
+  rpc ListRoles(ListRolesRequest) returns (ListRolesResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/roles"
+    };
+  }
+  // 获取角色权限列表
+  rpc GetRolePermissions(GetRolePermissionsRequest) returns (GetRolePermissionsResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/roles/{id}/permissions"
+    };
+  }
+  // 分配权限给角色
+  rpc AssignPermissionsToRole(AssignPermissionsToRoleRequest) returns (CommonResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/roles/{id}/permissions"
+      body: "*"
+    };
+  }
+  // 从角色移除权限
+  rpc RemovePermissionsFromRole(RemovePermissionsFromRoleRequest) returns (CommonResponse) {
+    option (google.api.http) = {
+      delete: "/api/v1/roles/{id}/permissions"
+    };
+  }
+  // 分配角色给用户
+  rpc AssignRolesToUser(AssignRolesToUserRequest) returns (CommonResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/users/{id}/roles"
+      body: "*"
+    };
+  }
+  // 从用户移除角色
+  rpc RemoveRolesFromUser(RemoveRolesFromUserRequest) returns (CommonResponse) {
+    option (google.api.http) = {
+      delete: "/api/v1/users/{id}/roles"
+    };
+  }
+  // 获取用户角色列表
+  rpc GetUserRoles(GetUserRolesRequest) returns (GetUserRolesResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/users/{id}/roles"
+    };
+  }
+  // 获取用户权限列表
+  rpc GetUserPermissions(GetUserPermissionsRequest) returns (GetUserPermissionsResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/users/{id}/permissions"
+    };
+  }
+  // 用户直授的实例权限（与角色实例权限合并后生效）
+  rpc GetUserInstancePermissions(GetUserInstancePermissionsRequest) returns (GetUserInstancePermissionsResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/users/{id}/instance-permissions"
+    };
+  }
+  rpc ReplaceUserInstancePermissions(ReplaceUserInstancePermissionsRequest) returns (CommonResponse) {
+    option (google.api.http) = {
+      put: "/api/v1/users/{id}/instance-permissions"
+      body: "*"
+    };
+  }
+  // 角色实例权限
+  rpc GetRoleInstancePermissions(GetRoleInstancePermissionsRequest) returns (GetRoleInstancePermissionsResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/roles/{id}/instance-permissions"
+    };
+  }
+  rpc ReplaceRoleInstancePermissions(ReplaceRoleInstancePermissionsRequest) returns (CommonResponse) {
+    option (google.api.http) = {
+      put: "/api/v1/roles/{id}/instance-permissions"
+      body: "*"
+    };
+  }
+}
+
+// 权限
+message Permission {
+  uint64 id = 1;
+  string name = 2;
+  string code = 3;
+  string resource = 4;
+  string action = 5;
+  string description = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+}
+
+// 角色
+message Role {
+  uint64 id = 1;
+  string name = 2;
+  string code = 3;
+  string description = 4;
+  google.protobuf.Timestamp created_at = 5;
+  google.protobuf.Timestamp updated_at = 6;
+}
+
+// 创建权限请求
+message CreatePermissionRequest {
+  string name = 1;
+  string code = 2;
+  string resource = 3;
+  string action = 4;
+  string description = 5;
+}
+
+// 创建权限响应
+message CreatePermissionResponse {
+  int32 code = 1;
+  string message = 2;
+  Permission data = 3;
+}
+
+// 更新权限请求
+message UpdatePermissionRequest {
+  uint64 id = 1;
+  optional string name = 2;
+  optional string description = 3;
+}
+
+// 删除权限请求
+message DeletePermissionRequest {
+  uint64 id = 1;
+}
+
+// 获取权限详情请求
+message GetPermissionRequest {
+  uint64 id = 1;
+}
+
+// 获取权限详情响应
+message GetPermissionResponse {
+  int32 code = 1;
+  string message = 2;
+  Permission data = 3;
+}
+
+// 获取权限列表请求
+message ListPermissionsRequest {
+  PageRequest page_request = 1;
+}
+
+// 获取权限列表响应
+message ListPermissionsResponse {
+  int32 code = 1;
+  string message = 2;
+  repeated Permission list = 3;
+  PageResponse page_response = 4;
+}
+
+// 创建角色请求
+message CreateRoleRequest {
+  string name = 1;
+  string code = 2;
+  string description = 3;
+}
+
+// 创建角色响应
+message CreateRoleResponse {
+  int32 code = 1;
+  string message = 2;
+  Role data = 3;
+}
+
+// 更新角色请求
+message UpdateRoleRequest {
+  uint64 id = 1;
+  optional string name = 2;
+  optional string description = 3;
+}
+
+// 删除角色请求
+message DeleteRoleRequest {
+  uint64 id = 1;
+}
+
+// 获取角色详情请求
+message GetRoleRequest {
+  uint64 id = 1;
+}
+
+// 获取角色详情响应
+message GetRoleResponse {
+  int32 code = 1;
+  string message = 2;
+  Role data = 3;
+}
+
+// 获取角色列表请求
+message ListRolesRequest {
+  PageRequest page_request = 1;
+}
+
+// 获取角色列表响应
+message ListRolesResponse {
+  int32 code = 1;
+  string message = 2;
+  repeated Role list = 3;
+  PageResponse page_response = 4;
+}
+
+// 获取角色权限列表请求
+message GetRolePermissionsRequest {
+  uint64 id = 1;
+}
+
+// 获取角色权限列表响应
+message GetRolePermissionsResponse {
+  int32 code = 1;
+  string message = 2;
+  repeated Permission list = 3;
+}
+
+// 分配权限给角色请求
+message AssignPermissionsToRoleRequest {
+  uint64 id = 1;
+  repeated uint64 permission_ids = 2;
+}
+
+// 从角色移除权限请求
+message RemovePermissionsFromRoleRequest {
+  uint64 id = 1;
+  repeated uint64 permission_ids = 2;
+}
+
+// 分配角色给用户请求
+message AssignRolesToUserRequest {
+  uint64 id = 1;
+  repeated uint64 role_ids = 2;
+}
+
+// 从用户移除角色请求
+message RemoveRolesFromUserRequest {
+  uint64 id = 1;
+  repeated uint64 role_ids = 2;
+}
+
+// 获取用户角色列表请求
+message GetUserRolesRequest {
+  uint64 id = 1;
+}
+
+// 获取用户角色列表响应
+message GetUserRolesResponse {
+  int32 code = 1;
+  string message = 2;
+  repeated Role list = 3;
+}
+
+// 获取用户权限列表请求
+message GetUserPermissionsRequest {
+  uint64 id = 1;
+}
+
+// 获取用户权限列表响应
+message GetUserPermissionsResponse {
+  int32 code = 1;
+  string message = 2;
+  repeated Permission list = 3;
+}
+
+// 实例级授权项：permission_type 为 query | ddl | dml | export
+message InstancePermissionItem {
+  uint64 instance_id = 1;
+  string permission_type = 2;
+}
+
+message GetUserInstancePermissionsRequest {
+  uint64 id = 1;
+}
+
+message GetUserInstancePermissionsResponse {
+  int32 code = 1;
+  string message = 2;
+  repeated InstancePermissionItem list = 3;
+}
+
+message ReplaceUserInstancePermissionsRequest {
+  uint64 id = 1;
+  repeated InstancePermissionItem items = 2;
+}
+
+message GetRoleInstancePermissionsRequest {
+  uint64 id = 1;
+}
+
+message GetRoleInstancePermissionsResponse {
+  int32 code = 1;
+  string message = 2;
+  repeated InstancePermissionItem list = 3;
+}
+
+message ReplaceRoleInstancePermissionsRequest {
+  uint64 id = 1;
+  repeated InstancePermissionItem items = 2;
+}

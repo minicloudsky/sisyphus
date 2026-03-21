@@ -1,0 +1,80 @@
+// 全局样式
+#root {
+  height: 100%;
+}
+
+.ant-layout {
+  min-height: 100vh;
+}
+
+// 自定义滚动条
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+// 代码编辑器样式
+.monaco-editor {
+  border-radius: 4px;
+}
+
+// 表格样式优化
+.ant-table {
+  .ant-table-thead > tr > th {
+    background: #fafafa;
+    font-weight: 600;
+  }
+}
+
+// 卡片样式
+.ant-card {
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+// 按钮组样式
+.ant-btn-group {
+  .ant-btn {
+    margin-right: 8px;
+    
+    &:last-child {
+      margin-right: 0;
+    }
+  }
+}
+
+// 表单样式
+.ant-form-item-label {
+  font-weight: 500;
+}
+
+// 标签样式
+.ant-tag {
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 12px;
+}
+
+// 响应式布局
+@media (max-width: 768px) {
+  .ant-pro-page-container {
+    padding: 16px;
+  }
+  
+  .ant-table {
+    font-size: 12px;
+  }
+}

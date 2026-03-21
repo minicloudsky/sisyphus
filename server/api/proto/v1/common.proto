@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package api.v1;
+
+option go_package = "sisyphus/server/api/v1;v1";
+
+import "google/protobuf/any.proto";
+
+// 通用响应
+message CommonResponse {
+  int32 code = 1;
+  string message = 2;
+  google.protobuf.Any data = 3;
+}
+
+// 分页请求
+message PageRequest {
+  int32 page = 1;
+  int32 page_size = 2;
+}
+
+// 分页响应
+message PageResponse {
+  int32 page = 1;
+  int32 page_size = 2;
+  int64 total = 3;
+}

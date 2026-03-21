@@ -1,0 +1,13 @@
+---
+description: Go backend — Kratos layers, proto, wire, HTTP custom routes
+globs: server/**/*.go
+alwaysApply: false
+---
+
+# Sisyphus server (Go)
+
+- **Layers**: `internal/service` → `internal/biz` → `internal/data`. Handlers stay thin; persistence and external calls live in `data`.
+- **Protos**: `server/api/proto/v1/*.proto`. After edits run `cd server && make api` (needs `protoc` + tools from `make init` in `server/Makefile`).
+- **DI**: After changing injectable constructors, run `cd server/cmd/sisyphus && wire`.
+- **HTTP**: Many routes are generated from proto; **custom** authenticated routes go in `internal/server/http.go` (`registerCustomRoutes`). Copy patterns like Bearer extraction + `authUsecase.ValidateToken` for downloads or special handlers.
+- **Verify**: `cd server && go build ./...` or `go test ./...`.

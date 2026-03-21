@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package api.v1;
+
+option go_package = "sisyphus/server/api/v1;v1";
+
+import "google/api/annotations.proto";
+
+// MyBatis代码生成服务
+service MyBatisService {
+  // 生成MyBatis代码
+  rpc GenerateCode (GenerateCodeRequest) returns (GenerateCodeResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/mybatis/generate"
+      body: "*"
+    };
+  }
+}
+
+message GenerateCodeRequest {
+  string table_meta_text = 1; // 表结构文本
+}
+
+message GenerateCodeResponse {
+  map<string, string> data = 1; // 生成的代码，key为代码类型，value为代码内容
+  repeated string name_list = 2; // 代码类型列表
+}

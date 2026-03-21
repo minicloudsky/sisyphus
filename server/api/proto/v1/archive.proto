@@ -1,0 +1,158 @@
+syntax = "proto3";
+
+package api.v1;
+
+option go_package = "sisyphus/server/api/v1;v1";
+
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+import "proto/v1/common.proto";
+
+// 数据归档服务
+service ArchiveService {
+  // 获取归档配置列表
+  rpc ListArchiveConfigs(ListArchiveConfigsRequest) returns (ListArchiveConfigsResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/archive/configs"
+    };
+  }
+  // 创建归档配置
+  rpc CreateArchiveConfig(CreateArchiveConfigRequest) returns (CreateArchiveConfigResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/archive/configs"
+      body: "*"
+    };
+  }
+  // 获取归档配置详情
+  rpc GetArchiveConfig(GetArchiveConfigRequest) returns (GetArchiveConfigResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/archive/configs/{id}"
+    };
+  }
+  // 更新归档配置
+  rpc UpdateArchiveConfig(UpdateArchiveConfigRequest) returns (CommonResponse) {
+    option (google.api.http) = {
+      put: "/api/v1/archive/configs/{id}"
+      body: "*"
+    };
+  }
+  // 删除归档配置
+  rpc DeleteArchiveConfig(DeleteArchiveConfigRequest) returns (CommonResponse) {
+    option (google.api.http) = {
+      delete: "/api/v1/archive/configs/{id}"
+    };
+  }
+  // 获取归档记录列表
+  rpc ListArchiveRecords(ListArchiveRecordsRequest) returns (ListArchiveRecordsResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/archive/configs/{id}/records"
+    };
+  }
+}
+
+// 归档配置
+message ArchiveConfig {
+  uint64 id = 1;
+  uint64 instance_id = 2;
+  string source_database = 3;
+  string source_table = 4;
+  uint64 dest_instance_id = 5;
+  string dest_database = 6;
+  string dest_table = 7;
+  string archive_field = 8; // 归档字段名
+  int32 retention_days = 9; // 保留天数
+  string archive_condition = 10; // 归档条件
+  bool is_enabled = 11;
+  string cron_expression = 12; // Cron表达式
+  string owner = 13;
+  google.protobuf.Timestamp created_at = 14;
+  google.protobuf.Timestamp updated_at = 15;
+}
+
+// 获取归档配置列表请求
+message ListArchiveConfigsRequest {
+  PageRequest page_request = 1;
+}
+
+// 获取归档配置列表响应
+message ListArchiveConfigsResponse {
+  int32 code = 1;
+  string message = 2;
+  repeated ArchiveConfig list = 3;
+  PageResponse page_response = 4;
+}
+
+// 创建归档配置请求
+message CreateArchiveConfigRequest {
+  uint64 instance_id = 1;
+  string source_database = 2;
+  string source_table = 3;
+  uint64 dest_instance_id = 4;
+  string dest_database = 5;
+  string dest_table = 6;
+  string archive_field = 7;
+  int32 retention_days = 8;
+  string archive_condition = 9;
+  bool is_enabled = 10;
+  string cron_expression = 11;
+}
+
+// 创建归档配置响应
+message CreateArchiveConfigResponse {
+  int32 code = 1;
+  string message = 2;
+  ArchiveConfig data = 3;
+}
+
+// 获取归档配置详情请求
+message GetArchiveConfigRequest {
+  uint64 id = 1;
+}
+
+// 获取归档配置详情响应
+message GetArchiveConfigResponse {
+  int32 code = 1;
+  string message = 2;
+  ArchiveConfig data = 3;
+}
+
+// 更新归档配置请求
+message UpdateArchiveConfigRequest {
+  uint64 id = 1;
+  optional string archive_condition = 2;
+  optional bool is_enabled = 3;
+  optional string cron_expression = 4;
+  optional int32 retention_days = 5;
+}
+
+// 删除归档配置请求
+message DeleteArchiveConfigRequest {
+  uint64 id = 1;
+}
+
+// 归档记录
+message ArchiveRecord {
+  uint64 id = 1;
+  uint64 config_id = 2;
+  string work_id = 3;
+  int32 status = 4; // 0: 进行中, 1: 成功, 2: 失败
+  string message = 5;
+  int64 archived_rows = 6; // 归档行数
+  google.protobuf.Timestamp start_time = 7;
+  google.protobuf.Timestamp end_time = 8;
+  google.protobuf.Timestamp created_at = 9;
+}
+
+// 获取归档记录列表请求
+message ListArchiveRecordsRequest {
+  uint64 id = 1; // config_id
+  PageRequest page_request = 2;
+}
+
+// 获取归档记录列表响应
+message ListArchiveRecordsResponse {
+  int32 code = 1;
+  string message = 2;
+  repeated ArchiveRecord list = 3;
+  PageResponse page_response = 4;
+}

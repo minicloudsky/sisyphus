@@ -1,0 +1,12 @@
+---
+description: Playwright E2E — runs against local stack, doc screenshots
+globs: e2e/**/*
+alwaysApply: false
+---
+
+# Sisyphus E2E (Playwright)
+
+- **Location**: `e2e/` — tests under `e2e/tests/`, config in `e2e/playwright.config.ts` (or package defaults).
+- **Prerequisite**: Backend and frontend (and dependencies like MySQL) must match what the tests expect; see `.github/workflows/e2e.yml` and repo README for CI behavior.
+- **Screenshots**: Some tests write to `docs/screenshots/en` and `zh-CN`; only update screenshot assets when changing UI or when explicitly regenerating docs images.
+- **Stability**: Prefer role/data-testid selectors and explicit waits aligned with existing specs; avoid brittle timing-only `sleep` unless the suite already uses that pattern heavily.

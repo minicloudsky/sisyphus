@@ -1,0 +1,193 @@
+syntax = "proto3";
+
+package api.v1;
+
+option go_package = "sisyphus/server/api/v1;v1";
+
+import "google/api/annotations.proto";
+import "proto/v1/common.proto";
+
+// 查询服务
+service QueryService {
+  // MySQL查询
+  rpc MySQLQuery(MySQLQueryRequest) returns (MySQLQueryResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/query/mysql"
+      body: "*"
+    };
+  }
+  // Redis查询
+  rpc RedisQuery(RedisQueryRequest) returns (RedisQueryResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/query/redis"
+      body: "*"
+    };
+  }
+  // HBase查询
+  rpc HBaseQuery(HBaseQueryRequest) returns (HBaseQueryResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/query/hbase"
+      body: "*"
+    };
+  }
+  // ClickHouse查询
+  rpc ClickHouseQuery(ClickHouseQueryRequest) returns (ClickHouseQueryResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/query/clickhouse"
+      body: "*"
+    };
+  }
+  // 导出查询结果
+  rpc ExportQuery(ExportQueryRequest) returns (ExportQueryResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/query/export"
+      body: "*"
+    };
+  }
+  // 查询历史列表
+  rpc ListHistory(ListHistoryRequest) returns (ListHistoryResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/query/history"
+    };
+  }
+  // 删除查询历史
+  rpc DeleteHistory(DeleteHistoryRequest) returns (DeleteHistoryResponse) {
+    option (google.api.http) = {
+      delete: "/api/v1/query/history/{id}"
+    };
+  }
+}
+
+// MySQL查询请求
+message MySQLQueryRequest {
+  uint64 instance_id = 1;
+  string database = 2;
+  string sql = 3;
+  int32 limit = 4;
+}
+
+// MySQL查询响应
+message MySQLQueryResponse {
+  int32 code = 1;
+  string message = 2;
+  QueryResult data = 3;
+}
+
+// Redis查询请求
+message RedisQueryRequest {
+  uint64 instance_id = 1;
+  string command = 2;
+}
+
+// Redis查询响应
+message RedisQueryResponse {
+  int32 code = 1;
+  string message = 2;
+  string data = 3; // JSON格式
+}
+
+// HBase查询请求
+message HBaseQueryRequest {
+  uint64 instance_id = 1;
+  string sql = 2;
+  int32 limit = 3;
+}
+
+// HBase查询响应
+message HBaseQueryResponse {
+  int32 code = 1;
+  string message = 2;
+  QueryResult data = 3;
+}
+
+// ClickHouse查询请求
+message ClickHouseQueryRequest {
+  uint64 instance_id = 1;
+  string database = 2;
+  string sql = 3;
+}
+
+// ClickHouse查询响应
+message ClickHouseQueryResponse {
+  int32 code = 1;
+  string message = 2;
+  QueryResult data = 3;
+}
+
+// 导出查询请求
+message ExportQueryRequest {
+  uint64 instance_id = 1;
+  string database = 2;
+  string sql = 3;
+  string format = 4; // excel, csv, json, sql (MySQL INSERT)
+  // format=sql 时为目标表名，支持 db.table；空则默认为 query_export
+  string table_name = 5;
+}
+
+// 导出查询响应
+message ExportQueryResponse {
+  int32 code = 1;
+  string message = 2;
+  ExportData data = 3;
+}
+
+message ExportData {
+  string file_name = 1;
+  string file_path = 2;
+  string download_url = 3;
+}
+
+// 查询历史列表请求
+message ListHistoryRequest {
+  int32 page = 1;
+  int32 page_size = 2;
+  uint64 instance_id = 3; // 可选
+}
+
+// 查询历史列表响应
+message ListHistoryResponse {
+  int32 code = 1;
+  string message = 2;
+  ListHistoryData data = 3;
+}
+
+message ListHistoryData {
+  repeated QueryHistory list = 1;
+  PageResponse page = 2;
+}
+
+// 删除查询历史请求
+message DeleteHistoryRequest {
+  uint64 id = 1;
+}
+
+// 删除查询历史响应
+message DeleteHistoryResponse {
+  int32 code = 1;
+  string message = 2;
+}
+
+// 查询结果
+message QueryResult {
+  repeated string columns = 1;
+  repeated QueryRow rows = 2;
+  int32 count = 3;
+  string time = 4; // 执行耗时
+}
+
+message QueryRow {
+  repeated string values = 1;
+}
+
+// 查询历史
+message QueryHistory {
+  uint64 id = 1;
+  uint64 user_id = 2;
+  uint64 instance_id = 3;
+  string database_name = 4;
+  string sql_text = 5;
+  double execute_time = 6;
+  int32 affected_rows = 7;
+  int32 result_count = 8;
+  string created_at = 9;
+}

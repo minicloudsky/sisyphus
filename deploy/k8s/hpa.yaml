@@ -1,0 +1,106 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Sisyphus — HorizontalPodAutoscaler (autoscaling/v2)
+#
+# Scales server and web deployments based on CPU + memory utilization.
+# autoscaling/v2 is stable since Kubernetes 1.25.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Backend server HPA ────────────────────────────────────────────────────────
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: sisyphus-server
+  namespace: sisyphus
+  labels:
+    app.kubernetes.io/name: sisyphus-server
+    app.kubernetes.io/component: server
+    app.kubernetes.io/part-of: sisyphus
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: sisyphus-server
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+  behavior:
+    scaleUp:
+      # React quickly to traffic spikes: allow doubling replicas in 60s.
+      stabilizationWindowSeconds: 30
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 60
+        - type: Pods
+          value: 2
+          periodSeconds: 60
+      selectPolicy: Max
+    scaleDown:
+      # Scale down conservatively: wait 5 min to avoid flapping.
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Percent
+          value: 25
+          periodSeconds: 60
+      selectPolicy: Min
+---
+# ── Frontend web HPA ──────────────────────────────────────────────────────────
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: sisyphus-web
+  namespace: sisyphus
+  labels:
+    app.kubernetes.io/name: sisyphus-web
+    app.kubernetes.io/component: web
+    app.kubernetes.io/part-of: sisyphus
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: sisyphus-web
+  minReplicas: 2
+  maxReplicas: 6
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 30
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 60
+        - type: Pods
+          value: 2
+          periodSeconds: 60
+      selectPolicy: Max
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Percent
+          value: 25
+          periodSeconds: 60
+      selectPolicy: Min

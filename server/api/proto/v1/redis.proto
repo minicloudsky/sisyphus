@@ -1,0 +1,120 @@
+syntax = "proto3";
+
+package api.v1;
+
+option go_package = "sisyphus/server/api/v1;v1";
+
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+import "proto/v1/common.proto";
+
+// Redis分析服务
+service RedisService {
+  // 分析热key
+  rpc AnalyzeHotKeys(AnalyzeHotKeysRequest) returns (AnalyzeHotKeysResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/redis/analyze/hotkeys"
+      body: "*"
+    };
+  }
+  // 分析大key
+  rpc AnalyzeBigKeys(AnalyzeBigKeysRequest) returns (AnalyzeBigKeysResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/redis/analyze/bigkeys"
+      body: "*"
+    };
+  }
+  // 获取分析任务列表
+  rpc ListAnalysisTasks(ListAnalysisTasksRequest) returns (ListAnalysisTasksResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/redis/tasks"
+    };
+  }
+  // 获取分析任务详情
+  rpc GetAnalysisTask(GetAnalysisTaskRequest) returns (GetAnalysisTaskResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/redis/tasks/{id}"
+    };
+  }
+}
+
+// 分析热key请求
+message AnalyzeHotKeysRequest {
+  uint64 instance_id = 1;
+  int32 time_window_seconds = 2; // 时间窗口（秒），默认60
+  int64 threshold = 3; // 访问频率阈值，默认100
+}
+
+// 分析热key响应
+message AnalyzeHotKeysResponse {
+  int32 code = 1;
+  string message = 2;
+  AnalyzeHotKeysData data = 3;
+}
+
+// 分析热key数据
+message AnalyzeHotKeysData {
+  uint64 task_id = 1;
+  string work_id = 2;
+  string message = 3;
+}
+
+// 分析大key请求
+message AnalyzeBigKeysRequest {
+  uint64 instance_id = 1;
+  int64 size_threshold = 2; // 大小阈值（字节），默认1048576 (1MB)
+}
+
+// 分析大key响应
+message AnalyzeBigKeysResponse {
+  int32 code = 1;
+  string message = 2;
+  AnalyzeBigKeysData data = 3;
+}
+
+// 分析大key数据
+message AnalyzeBigKeysData {
+  uint64 task_id = 1;
+  string work_id = 2;
+  string message = 3;
+}
+
+// 获取分析任务列表请求
+message ListAnalysisTasksRequest {
+  PageRequest page_request = 1;
+  optional uint64 instance_id = 2;
+  optional string task_type = 3; // hotkey, bigkey
+}
+
+// 获取分析任务列表响应
+message ListAnalysisTasksResponse {
+  int32 code = 1;
+  string message = 2;
+  repeated RedisAnalysisTask list = 3;
+  PageResponse page_response = 4;
+}
+
+// Redis分析任务
+message RedisAnalysisTask {
+  uint64 id = 1;
+  string work_id = 2;
+  uint64 instance_id = 3;
+  string task_type = 4; // hotkey, bigkey
+  int32 status = 5; // 0: 进行中, 1: 完成, 2: 失败
+  string result = 6; // JSON格式的结果
+  uint64 submitter_id = 7;
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp updated_at = 9;
+}
+
+// 获取分析任务详情请求
+message GetAnalysisTaskRequest {
+  uint64 id = 1;
+}
+
+// 获取分析任务详情响应
+message GetAnalysisTaskResponse {
+  int32 code = 1;
+  string message = 2;
+  RedisAnalysisTask data = 3;
+}

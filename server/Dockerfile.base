@@ -1,0 +1,161 @@
+# ═════════════════════════════════════════════════════════════════
+# Sisyphus Backend — Base Image
+#
+# This image is built ONCE and pushed to Docker Hub.  It bundles every
+# OS-level package and third-party binary that the application
+# needs at runtime, so the main Dockerfile can skip all downloads
+# and just copy the compiled binary on top.
+#
+# Rebuild this image when:
+#   • Any tool version below is bumped
+#   • A new OS package is required
+#   • The base OS image receives a security update
+#
+# Build:
+#   docker build -f Dockerfile.base \
+#     -t <dockerhub-user>/sisyphus-backend-base:1.0.0 .
+#
+# Override a tool version:
+#   docker build -f Dockerfile.base \
+#     --build-arg GHOST_VERSION=1.1.7 \
+#     -t <dockerhub-user>/sisyphus-backend-base:1.1.0 .
+# ═════════════════════════════════════════════════════════════════
+
+# ─────────────────────────────────────────────────────────────────
+# Stage 1 — Download third-party tools
+#
+# wget lives only in this throwaway stage; the final base image
+# never contains it, keeping the attack surface small.
+# ─────────────────────────────────────────────────────────────────
+FROM debian:bookworm-slim AS tools-dl
+
+# ── Version pins (override with --build-arg) ──────────────────────
+ARG GHOST_VERSION=1.1.6
+ARG GOINCEPTION_VERSION=1.3.0
+ARG PT_VERSION=3.6.0
+ARG DATAX_VERSION=datax_v202309
+ARG CANAL_VERSION=1.1.7
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends wget ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# ── gh-ost ────────────────────────────────────────────────────────
+# Online schema migration — Go service calls this CLI directly.
+RUN set -eux; \
+    wget -q "https://github.com/github/gh-ost/releases/download/v${GHOST_VERSION}/gh-ost_${GHOST_VERSION}_linux_amd64.tar.gz" \
+        -O /tmp/gh-ost.tar.gz; \
+    tar -xzf /tmp/gh-ost.tar.gz -C /usr/local/bin/ gh-ost; \
+    chmod +x /usr/local/bin/gh-ost; \
+    rm -f /tmp/gh-ost.tar.gz
+
+# ── goInception ───────────────────────────────────────────────────
+# SQL audit/execution engine; connected via MySQL protocol on :4000.
+RUN set -eux; \
+    wget -q "https://github.com/hanchuanchuan/goInception/releases/download/v${GOINCEPTION_VERSION}/goInception-linux-amd64-v${GOINCEPTION_VERSION}.tar.gz" \
+        -O /tmp/goinception.tar.gz; \
+    mkdir -p /opt/goInception; \
+    tar -xzf /tmp/goinception.tar.gz -C /opt/goInception; \
+    ln -sf /opt/goInception/goInception /usr/local/bin/goInception; \
+    rm -f /tmp/goinception.tar.gz
+
+# ── Percona Toolkit — pt-archiver ────────────────────────────────
+# Perl script used by the data-archive feature.
+RUN set -eux; \
+    wget -q "https://github.com/percona/percona-toolkit/releases/download/v${PT_VERSION}/percona-toolkit-${PT_VERSION}_x86_64.tar.gz" \
+        -O /tmp/pt.tar.gz; \
+    tar -xzf /tmp/pt.tar.gz -C /tmp/; \
+    install -m 0755 /tmp/percona-toolkit-${PT_VERSION}/bin/pt-archiver /usr/local/bin/pt-archiver; \
+    rm -rf /tmp/pt.tar.gz /tmp/percona-toolkit-${PT_VERSION}
+
+# ── DataX ─────────────────────────────────────────────────────────
+# Alibaba batch data sync (Python3 + JVM).
+RUN set -eux; \
+    wget -q "https://github.com/alibaba/DataX/releases/download/${DATAX_VERSION}/datax.tar.gz" \
+        -O /tmp/datax.tar.gz; \
+    mkdir -p /opt/datax; \
+    tar -xzf /tmp/datax.tar.gz -C /tmp/; \
+    mv /tmp/datax/* /opt/datax/; \
+    chmod +x /opt/datax/bin/datax.py; \
+    rm -f /tmp/datax.tar.gz; \
+    rmdir /tmp/datax 2>/dev/null || true
+
+# ── Canal ─────────────────────────────────────────────────────────
+# Alibaba MySQL binlog subscriber (JVM), run as sidecar.
+RUN set -eux; \
+    wget -q "https://github.com/alibaba/canal/releases/download/canal-${CANAL_VERSION}/canal.deployer-${CANAL_VERSION}.tar.gz" \
+        -O /tmp/canal.tar.gz; \
+    mkdir -p /opt/canal; \
+    tar -xzf /tmp/canal.tar.gz -C /opt/canal/; \
+    chmod +x /opt/canal/bin/startup.sh /opt/canal/bin/stop.sh; \
+    rm -f /tmp/canal.tar.gz
+
+# ─────────────────────────────────────────────────────────────────
+# Stage 2 — Assemble the base runtime image
+# ─────────────────────────────────────────────────────────────────
+FROM debian:bookworm-slim AS base
+
+# Propagate version ARGs so they can be recorded as image labels.
+ARG GHOST_VERSION=1.1.6
+ARG GOINCEPTION_VERSION=1.3.0
+ARG PT_VERSION=3.6.0
+ARG DATAX_VERSION=datax_v202309
+ARG CANAL_VERSION=1.1.7
+
+LABEL org.opencontainers.image.title="sisyphus-backend-base" \
+      org.opencontainers.image.description="Sisyphus base: runtime OS packages + third-party tools" \
+      org.opencontainers.image.licenses="MIT" \
+      com.sisyphus.tools.gh-ost="${GHOST_VERSION}" \
+      com.sisyphus.tools.goinception="${GOINCEPTION_VERSION}" \
+      com.sisyphus.tools.percona-toolkit="${PT_VERSION}" \
+      com.sisyphus.tools.datax="${DATAX_VERSION}" \
+      com.sisyphus.tools.canal="${CANAL_VERSION}"
+
+ENV TZ=Asia/Shanghai \
+    LANG=C.UTF-8 \
+    DATAX_HOME=/opt/datax \
+    CANAL_HOME=/opt/canal \
+    GOINCEPTION_HOME=/opt/goInception \
+    PATH="/usr/local/bin:/opt/datax/bin:${PATH}"
+
+# ── OS runtime packages ───────────────────────────────────────────
+#   ca-certificates           TLS verification
+#   tzdata                    timezone data
+#   perl / libdbi-perl / libdbd-mysql-perl   pt-archiver runtime
+#   python3 / python3-requests               DataX runner
+#   openjdk-17-jre-headless                  DataX JVM + Canal JVM
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        tzdata \
+        perl \
+        libdbi-perl \
+        libdbd-mysql-perl \
+        python3 \
+        python3-requests \
+        openjdk-17-jre-headless \
+    && ln -sf /usr/share/zoneinfo/${TZ} /etc/localtime \
+    && echo "${TZ}" > /etc/timezone \
+    && rm -rf /var/lib/apt/lists/*
+
+# ── Third-party tools from tools-dl stage ────────────────────────
+COPY --from=tools-dl /usr/local/bin/gh-ost        /usr/local/bin/gh-ost
+COPY --from=tools-dl /usr/local/bin/pt-archiver   /usr/local/bin/pt-archiver
+COPY --from=tools-dl /usr/local/bin/goInception   /usr/local/bin/goInception
+COPY --from=tools-dl /opt/goInception             /opt/goInception
+COPY --from=tools-dl /opt/datax                   /opt/datax
+COPY --from=tools-dl /opt/canal                   /opt/canal
+
+# ── Runtime directories ───────────────────────────────────────────
+RUN mkdir -p /data/ghost/socket /data/ghost/log /data/ghost/panic \
+    && mkdir -p /opt/goInception/config
+
+# ── Non-root user ─────────────────────────────────────────────────
+# The main Dockerfile (and k8s pods) run as this user.
+# /app is NOT created here — the main image owns it.
+RUN useradd --system --shell /bin/false --uid 1001 --create-home sisyphus \
+    && chown -R sisyphus:sisyphus \
+        /data/ghost \
+        /opt/goInception \
+        /opt/datax \
+        /opt/canal

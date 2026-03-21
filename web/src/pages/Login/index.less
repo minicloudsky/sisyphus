@@ -1,0 +1,68 @@
+.login-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: auto;
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #a855f7 100%);
+
+  .ant-pro-form-login-container {
+    padding-top: 80px;
+  }
+
+  .ant-pro-form-login-top {
+    text-align: center;
+    margin-bottom: 8px;
+  }
+
+  // Stack logo → title → desc vertically, all centered
+  .ant-pro-form-login-header {
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    height: auto !important;
+    min-height: 0 !important;
+    gap: 8px;
+    overflow: visible !important;
+  }
+
+  .ant-pro-form-login-logo {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 72px !important;
+    height: 72px !important;
+    min-height: 72px !important;
+    border-radius: 16px;
+    overflow: visible;
+    margin-right: 0 !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    flex-shrink: 0 !important;
+
+    img {
+      display: block;
+      width: 72px;
+      height: 72px;
+      object-fit: cover;
+      border-radius: 16px;
+    }
+  }
+
+  .ant-pro-form-login-title {
+    font-size: 32px;
+    font-weight: 700;
+    color: #fff !important;
+    letter-spacing: 1px;
+  }
+
+  .ant-pro-form-login-desc {
+    color: rgba(255, 255, 255, 0.85) !important;
+    font-size: 15px;
+    margin-bottom: 24px;
+    margin-top: 4px;
+  }
+
+  .ant-pro-login-container {
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+  }
+}

@@ -1,0 +1,41 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Sisyphus — PodDisruptionBudget (policy/v1)
+#
+# Ensures at least one replica of each component remains available during
+# voluntary disruptions (node drain, rolling upgrades, etc.).
+# policy/v1 is stable since Kubernetes 1.21.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Backend server PDB ────────────────────────────────────────────────────────
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: sisyphus-server
+  namespace: sisyphus
+  labels:
+    app.kubernetes.io/name: sisyphus-server
+    app.kubernetes.io/component: server
+    app.kubernetes.io/part-of: sisyphus
+spec:
+  # Keep at least 1 pod running during node maintenance / rolling updates.
+  # Combined with minReplicas=2 in HPA, this ensures zero-downtime drains.
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: sisyphus-server
+---
+# ── Frontend web PDB ──────────────────────────────────────────────────────────
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: sisyphus-web
+  namespace: sisyphus
+  labels:
+    app.kubernetes.io/name: sisyphus-web
+    app.kubernetes.io/component: web
+    app.kubernetes.io/part-of: sisyphus
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: sisyphus-web

@@ -1,0 +1,147 @@
+syntax = "proto3";
+
+package api.v1;
+
+option go_package = "sisyphus/server/api/v1;v1";
+
+import "google/api/annotations.proto";
+import "proto/v1/common.proto";
+
+// gh-ost管理服务
+service GhOstService {
+  // 获取执行进度
+  rpc GetProgress(GetProgressRequest) returns (GetProgressResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/ghost/progress"
+    };
+  }
+  // 暂停执行
+  rpc Throttle(ThrottleRequest) returns (CommonResponse) {
+    option (google.api.http) = {
+      put: "/api/v1/ghost/throttle"
+      body: "*"
+    };
+  }
+  // 恢复执行
+  rpc NoThrottle(NoThrottleRequest) returns (CommonResponse) {
+    option (google.api.http) = {
+      put: "/api/v1/ghost/no-throttle"
+      body: "*"
+    };
+  }
+  // 获取执行参数
+  rpc GetParams(GetParamsRequest) returns (GetParamsResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/ghost/params"
+    };
+  }
+  // 修改执行参数
+  rpc ModifyParams(ModifyParamsRequest) returns (CommonResponse) {
+    option (google.api.http) = {
+      put: "/api/v1/ghost/params"
+      body: "*"
+    };
+  }
+  // 停止执行
+  rpc Stop(StopRequest) returns (CommonResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/ghost/stop"
+      body: "*"
+    };
+  }
+  // 获取执行日志
+  rpc GetLog(GetLogRequest) returns (GetLogResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/ghost/log"
+    };
+  }
+}
+
+// 获取进度请求
+message GetProgressRequest {
+  string work_id = 1;
+}
+
+// 获取进度响应
+message GetProgressResponse {
+  int32 code = 1;
+  string message = 2;
+  GhOstProgress data = 3;
+}
+
+// gh-ost执行进度
+message GhOstProgress {
+  string work_id = 1;
+  string table_name = 2;
+  int64 total_rows = 3;
+  int64 copied_rows = 4;
+  double progress_percent = 5;
+  double estimated_seconds_remaining = 6;
+  string status = 7; // running, paused, completed, failed
+  string message = 8;
+}
+
+// 暂停请求
+message ThrottleRequest {
+  string table_name = 1;
+  string work_id = 2;
+}
+
+// 恢复请求
+message NoThrottleRequest {
+  string table_name = 1;
+  string work_id = 2;
+}
+
+// 获取参数请求
+message GetParamsRequest {
+  string work_id = 1;
+}
+
+// 获取参数响应
+message GetParamsResponse {
+  int32 code = 1;
+  string message = 2;
+  GhOstParams data = 3;
+}
+
+// gh-ost执行参数
+message GhOstParams {
+  string work_id = 1;
+  int32 chunk_size = 2;
+  int32 max_lag_millis = 3;
+  int32 max_load = 4;
+  int32 critical_load = 5;
+  double nice_ratio = 6;
+}
+
+// 修改参数请求
+message ModifyParamsRequest {
+  string work_id = 1;
+  optional int32 chunk_size = 2;
+  optional int32 max_lag_millis = 3;
+  optional int32 max_load = 4;
+  optional int32 critical_load = 5;
+  optional double nice_ratio = 6;
+}
+
+// 停止请求
+message StopRequest {
+  string work_id = 1;
+}
+
+// 获取日志请求
+message GetLogRequest {
+  string work_id = 1;
+  int32 lines = 2;    // 返回最后N行, 默认100
+  int64 offset = 3;   // 从第N行开始返回(用于增量获取), 0=从末尾
+}
+
+// 获取日志响应
+message GetLogResponse {
+  int32 code = 1;
+  string message = 2;
+  repeated string log_lines = 3;
+  int64 total_lines = 4;  // 日志总行数
+  string log_file = 5;    // 日志文件路径
+}

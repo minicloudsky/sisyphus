@@ -1,0 +1,181 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Sisyphus — NetworkPolicy
+#
+# Strategy: default-deny all ingress + egress, then allow only required paths.
+#
+# Traffic topology:
+#   Internet → Ingress Controller → sisyphus-web (port 80)
+#   Internet → Ingress Controller → sisyphus-server (port 8000)
+#   sisyphus-web     → sisyphus-server (port 8000)  [optional if proxied via ingress only]
+#   sisyphus-server  → mysql (port 3306)
+#   sisyphus-server  → redis (port 6379)
+#   sisyphus-server  → goinception (port 4000)
+#   All pods         → kube-dns (port 53 UDP/TCP)
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Default deny — all ingress ────────────────────────────────────────────────
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: sisyphus
+  labels:
+    app.kubernetes.io/part-of: sisyphus
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+# ── Default deny — all egress ─────────────────────────────────────────────────
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-egress
+  namespace: sisyphus
+  labels:
+    app.kubernetes.io/part-of: sisyphus
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+---
+# ── Allow DNS resolution for all pods ─────────────────────────────────────────
+# Without this, all pods lose the ability to resolve service names.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns-egress
+  namespace: sisyphus
+  labels:
+    app.kubernetes.io/part-of: sisyphus
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+---
+# ── sisyphus-web: allow ingress from nginx ingress controller ─────────────────
+# The nginx ingress controller runs in its own namespace (typically
+# "ingress-nginx"). Label the ingress controller namespace with
+# kubernetes.io/metadata.name=ingress-nginx for this selector to work.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-to-web
+  namespace: sisyphus
+  labels:
+    app.kubernetes.io/part-of: sisyphus
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: sisyphus-web
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+      ports:
+        - port: 80
+          protocol: TCP
+---
+# ── sisyphus-server: allow ingress from ingress controller + web ──────────────
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-to-server
+  namespace: sisyphus
+  labels:
+    app.kubernetes.io/part-of: sisyphus
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: sisyphus-server
+  policyTypes:
+    - Ingress
+  ingress:
+    # From nginx ingress controller
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+      ports:
+        - port: 8000
+          protocol: TCP
+    # From web pods (if web proxies API calls directly inside cluster)
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: sisyphus-web
+      ports:
+        - port: 8000
+          protocol: TCP
+---
+# ── sisyphus-server: allow egress to MySQL, Redis, goInception ────────────────
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-server-egress
+  namespace: sisyphus
+  labels:
+    app.kubernetes.io/part-of: sisyphus
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: sisyphus-server
+  policyTypes:
+    - Egress
+  egress:
+    # MySQL
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: mysql
+      ports:
+        - port: 3306
+          protocol: TCP
+    # Redis
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: redis
+      ports:
+        - port: 6379
+          protocol: TCP
+    # goInception (SQL audit engine)
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: goinception
+      ports:
+        - port: 4000
+          protocol: TCP
+---
+# ── sisyphus-web: allow egress to sisyphus-server ─────────────────────────────
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-web-egress
+  namespace: sisyphus
+  labels:
+    app.kubernetes.io/part-of: sisyphus
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: sisyphus-web
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: sisyphus-server
+      ports:
+        - port: 8000
+          protocol: TCP

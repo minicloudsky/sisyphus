@@ -1,0 +1,337 @@
+syntax = "proto3";
+
+package api.v1;
+
+option go_package = "sisyphus/server/api/v1;v1";
+
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+import "proto/v1/common.proto";
+
+// 数据库实例管理服务
+service InstanceService {
+  // 获取实例列表
+  rpc ListInstances(ListInstancesRequest) returns (ListInstancesResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/instances"
+    };
+  }
+  // 创建实例
+  rpc CreateInstance(CreateInstanceRequest) returns (CreateInstanceResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/instances"
+      body: "*"
+    };
+  }
+  // 获取实例详情
+  rpc GetInstance(GetInstanceRequest) returns (GetInstanceResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/instances/{id}"
+    };
+  }
+  // 更新实例
+  rpc UpdateInstance(UpdateInstanceRequest) returns (CommonResponse) {
+    option (google.api.http) = {
+      put: "/api/v1/instances/{id}"
+      body: "*"
+    };
+  }
+  // 删除实例
+  rpc DeleteInstance(DeleteInstanceRequest) returns (CommonResponse) {
+    option (google.api.http) = {
+      delete: "/api/v1/instances/{id}"
+    };
+  }
+  // 测试连接
+  rpc TestConnection(TestConnectionRequest) returns (TestConnectionResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/instances/{id}/test"
+    };
+  }
+  // 获取数据库列表
+  rpc ListDatabases(ListDatabasesRequest) returns (ListDatabasesResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/instances/{instance_id}/databases"
+    };
+  }
+  // 获取表列表
+  rpc ListTables(ListTablesRequest) returns (ListTablesResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/instances/{instance_id}/databases/{database}/tables"
+    };
+  }
+  // 获取表DDL
+  rpc GetTableDDL(GetTableDDLRequest) returns (GetTableDDLResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/instances/{instance_id}/databases/{database}/tables/{table}/ddl"
+    };
+  }
+  // 获取执行计划
+  rpc GetExplain(GetExplainRequest) returns (GetExplainResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/instances/{instance_id}/explain"
+      body: "*"
+    };
+  }
+  // 获取进程列表
+  rpc GetProcessList(GetProcessListRequest) returns (GetProcessListResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/instances/{instance_id}/processes"
+    };
+  }
+  // 杀死进程
+  rpc KillProcess(KillProcessRequest) returns (KillProcessResponse) {
+    option (google.api.http) = {
+      delete: "/api/v1/instances/{instance_id}/processes/{process_id}"
+    };
+  }
+  // 获取表列信息
+  rpc GetTableColumns(GetTableColumnsRequest) returns (GetTableColumnsResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/instances/{instance_id}/databases/{database}/tables/{table}/columns"
+    };
+  }
+  // 获取SQL优化建议
+  rpc GetAdvisorSuggestions(GetAdvisorSuggestionsRequest) returns (GetAdvisorSuggestionsResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/instances/{instance_id}/advisor"
+      body: "*"
+    };
+  }
+}
+
+// 数据库实例
+message DatabaseInstance {
+  uint64 id = 1;
+  string name = 2;
+  string db_type = 3; // mysql, redis, clickhouse
+  string host = 4;
+  int32 port = 5;
+  string username = 6;
+  string password = 7; // 不返回密码
+  string env = 8; // dev, test, prod
+  string region = 9;
+  string description = 10;
+  bool is_enabled = 11;
+  google.protobuf.Timestamp created_at = 12;
+  google.protobuf.Timestamp updated_at = 13;
+}
+
+// 获取实例列表请求
+message ListInstancesRequest {
+  PageRequest page_request = 1;
+  optional string db_type = 2;
+  optional string env = 3;
+  // 按实例能力过滤（query|ddl|dml|export）；空则只要用户在该实例上拥有任一授权即可（已启用实例 ACL 时）
+  optional string instance_permission_scope = 4;
+}
+
+// 获取实例列表响应
+message ListInstancesResponse {
+  int32 code = 1;
+  string message = 2;
+  repeated DatabaseInstance list = 3;
+  PageResponse page_response = 4;
+}
+
+// 创建实例请求
+message CreateInstanceRequest {
+  string name = 1;
+  string db_type = 2;
+  string host = 3;
+  int32 port = 4;
+  string username = 5;
+  string password = 6;
+  string env = 7;
+  string region = 8;
+  string description = 9;
+}
+
+// 创建实例响应
+message CreateInstanceResponse {
+  int32 code = 1;
+  string message = 2;
+  DatabaseInstance data = 3;
+}
+
+// 获取实例详情请求
+message GetInstanceRequest {
+  uint64 id = 1;
+}
+
+// 获取实例详情响应
+message GetInstanceResponse {
+  int32 code = 1;
+  string message = 2;
+  DatabaseInstance data = 3;
+}
+
+// 更新实例请求
+message UpdateInstanceRequest {
+  uint64 id = 1;
+  optional string name = 2;
+  optional string host = 3;
+  optional int32 port = 4;
+  optional string username = 5;
+  optional string password = 6;
+  optional string env = 7;
+  optional string region = 8;
+  optional string description = 9;
+  optional bool is_enabled = 10;
+}
+
+// 删除实例请求
+message DeleteInstanceRequest {
+  uint64 id = 1;
+}
+
+// 测试连接请求
+message TestConnectionRequest {
+  uint64 id = 1;
+}
+
+// 测试连接响应
+message TestConnectionResponse {
+  int32 code = 1;
+  string message = 2;
+  bool success = 3;
+}
+
+// 获取数据库列表请求
+message ListDatabasesRequest {
+  uint64 instance_id = 1;
+}
+
+// 获取数据库列表响应
+message ListDatabasesResponse {
+  int32 code = 1;
+  string message = 2;
+  repeated string databases = 3;
+}
+
+// 获取表列表请求
+message ListTablesRequest {
+  uint64 instance_id = 1;
+  string database = 2;
+}
+
+// 获取表列表响应
+message ListTablesResponse {
+  int32 code = 1;
+  string message = 2;
+  repeated string tables = 3;
+}
+
+// 获取表DDL请求
+message GetTableDDLRequest {
+  uint64 instance_id = 1;
+  string database = 2;
+  string table = 3;
+}
+
+// 获取表DDL响应
+message GetTableDDLResponse {
+  int32 code = 1;
+  string message = 2;
+  string ddl = 3;
+}
+
+// 获取执行计划请求
+message GetExplainRequest {
+  uint64 instance_id = 1;
+  string database = 2;
+  string sql = 3;
+}
+
+// 获取执行计划响应
+message GetExplainResponse {
+  int32 code = 1;
+  string message = 2;
+  string explain = 3; // JSON格式的执行计划
+}
+
+// 获取进程列表请求
+message GetProcessListRequest {
+  uint64 instance_id = 1;
+}
+
+// 进程信息
+message ProcessInfoItem {
+  string id = 1;
+  string user = 2;
+  string host = 3;
+  string db = 4;
+  string command = 5;
+  int64 time = 6;
+  string state = 7;
+  string info = 8;
+  string query_id = 9;
+  string progress = 10;
+}
+
+// 获取进程列表响应
+message GetProcessListResponse {
+  int32 code = 1;
+  string message = 2;
+  repeated ProcessInfoItem processes = 3;
+}
+
+// 杀死进程请求
+message KillProcessRequest {
+  uint64 instance_id = 1;
+  string process_id = 2;
+}
+
+// 杀死进程响应
+message KillProcessResponse {
+  int32 code = 1;
+  string message = 2;
+}
+
+// 获取表列信息请求
+message GetTableColumnsRequest {
+  uint64 instance_id = 1;
+  string database = 2;
+  string table = 3;
+}
+
+// 表列信息
+message TableColumnItem {
+  string name = 1;
+  string type = 2;
+  string null = 3;
+  string key = 4;
+  string default = 5;
+  string extra = 6;
+  string comment = 7;
+}
+
+// 获取表列信息响应
+message GetTableColumnsResponse {
+  int32 code = 1;
+  string message = 2;
+  repeated TableColumnItem columns = 3;
+}
+
+// SQL优化建议请求
+message GetAdvisorSuggestionsRequest {
+  uint64 instance_id = 1;
+  string database = 2;
+  string table = 3;
+  string sql = 4;
+}
+
+// 优化建议条目
+message AdvisorSuggestionItem {
+  string level = 1;
+  string rule = 2;
+  string message = 3;
+  string detail = 4;
+}
+
+// SQL优化建议响应
+message GetAdvisorSuggestionsResponse {
+  int32 code = 1;
+  string message = 2;
+  repeated AdvisorSuggestionItem suggestions = 3;
+}

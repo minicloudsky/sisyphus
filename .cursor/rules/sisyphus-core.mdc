@@ -1,0 +1,13 @@
+---
+description: Sisyphus monorepo basics, scope, and docs policy
+alwaysApply: true
+---
+
+# Sisyphus — core
+
+- **Monorepo**: `server/` (Go Kratos), `web/` (Umi 4 + Ant Design), `e2e/` (Playwright), `migrations/`, `scripts/`, `deploy/k8s/`, `docs/`.
+- **Local dev**: `./dev.sh` or backend `server/` (:8000) + frontend `web/` (:8001). SPA uses hash routes (`/#/...`).
+- **Change scope**: Only touch files required for the task. No drive-by refactors, unrelated formatting, or extra markdown unless the user asked.
+- **User-facing docs**: Prefer **English** for new README/guide-style content; Chinese lives in `*.zh-CN.md` mirrors. See `CLAUDE.md` for full orientation.
+- **Secrets**: Never commit real passwords, JWT secrets, or production DSNs. Use local config patterns already in the repo.
+- **Security**: New endpoints that read/write files must validate paths (no `..`), authenticate consistently with existing JWT patterns, and avoid leaking instance credentials in logs.

@@ -1,0 +1,225 @@
+syntax = "proto3";
+
+package api.v1;
+
+option go_package = "sisyphus/server/api/v1;v1";
+
+import "google/api/annotations.proto";
+import "proto/v1/common.proto";
+import "proto/v1/query.proto";
+
+// 宽表服务
+service WidetableService {
+  // 创建宽表配置
+  rpc CreateConfig(CreateWidetableConfigRequest) returns (CreateWidetableConfigResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/widetable/configs"
+      body: "*"
+    };
+  }
+  // 更新宽表配置
+  rpc UpdateConfig(UpdateWidetableConfigRequest) returns (CommonResponse) {
+    option (google.api.http) = {
+      put: "/api/v1/widetable/configs/{id}"
+      body: "*"
+    };
+  }
+  // 删除宽表配置
+  rpc DeleteConfig(DeleteWidetableConfigRequest) returns (CommonResponse) {
+    option (google.api.http) = {
+      delete: "/api/v1/widetable/configs/{id}"
+    };
+  }
+  // 获取宽表配置详情
+  rpc GetConfig(GetWidetableConfigRequest) returns (GetWidetableConfigResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/widetable/configs/{id}"
+    };
+  }
+  // 获取宽表配置列表
+  rpc ListConfigs(ListWidetableConfigsRequest) returns (ListWidetableConfigsResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/widetable/configs"
+    };
+  }
+  // 预览宽表查询SQL
+  rpc PreviewSQL(PreviewWidetableSQLRequest) returns (PreviewWidetableSQLResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/widetable/configs/{id}/preview-sql"
+      body: "*"
+    };
+  }
+  // 执行宽表查询
+  rpc ExecuteQuery(ExecuteWidetableQueryRequest) returns (ExecuteWidetableQueryResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/widetable/configs/{id}/query"
+      body: "*"
+    };
+  }
+  // 启动全量同步（物化到目标表）
+  rpc StartFullSync(StartWidetableSyncRequest) returns (StartWidetableSyncResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/widetable/configs/{id}/sync"
+      body: "*"
+    };
+  }
+  // 获取同步记录列表
+  rpc ListSyncRecords(ListWidetableSyncRecordsRequest) returns (ListWidetableSyncRecordsResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/widetable/configs/{config_id}/sync-records"
+    };
+  }
+}
+
+// 宽表配置
+message WidetableConfig {
+  uint64 id = 1;
+  string name = 2;
+  string description = 3;
+  uint64 source_instance_id = 4;
+  string main_database = 5;
+  string main_table = 6;
+  string join_config = 7;   // JSON: [{database,table,alias,join_type,on}]
+  string field_config = 8;  // JSON: [{source,alias}]
+  string sync_condition = 9;
+  uint64 target_instance_id = 10;
+  string target_database = 11;
+  string target_table = 12;
+  int32 status = 13;        // 0-停止 1-运行中
+  uint64 created_by = 14;
+  string created_at = 15;
+  string updated_at = 16;
+}
+
+// 同步记录
+message WidetableSyncRecord {
+  uint64 id = 1;
+  uint64 config_id = 2;
+  int32 sync_type = 3;      // 1-全量 2-增量
+  int32 status = 4;         // 0-进行中 1-成功 2-失败
+  int64 processed_rows = 5;
+  string error_message = 6;
+  double cost_seconds = 7;
+  string started_at = 8;
+  string finished_at = 9;
+  string created_at = 10;
+}
+
+// 创建配置请求
+message CreateWidetableConfigRequest {
+  string name = 1;
+  string description = 2;
+  uint64 source_instance_id = 3;
+  string main_database = 4;
+  string main_table = 5;
+  string join_config = 6;
+  string field_config = 7;
+  string sync_condition = 8;
+  uint64 target_instance_id = 9;
+  string target_database = 10;
+  string target_table = 11;
+}
+
+message CreateWidetableConfigResponse {
+  int32 code = 1;
+  string message = 2;
+  uint64 id = 3;
+}
+
+// 更新配置请求
+message UpdateWidetableConfigRequest {
+  uint64 id = 1;
+  string name = 2;
+  string description = 3;
+  uint64 source_instance_id = 4;
+  string main_database = 5;
+  string main_table = 6;
+  string join_config = 7;
+  string field_config = 8;
+  string sync_condition = 9;
+  uint64 target_instance_id = 10;
+  string target_database = 11;
+  string target_table = 12;
+}
+
+message DeleteWidetableConfigRequest {
+  uint64 id = 1;
+}
+
+message GetWidetableConfigRequest {
+  uint64 id = 1;
+}
+
+message GetWidetableConfigResponse {
+  int32 code = 1;
+  string message = 2;
+  WidetableConfig data = 3;
+}
+
+message ListWidetableConfigsRequest {
+  int32 page = 1;
+  int32 page_size = 2;
+  string keyword = 3;
+}
+
+message ListWidetableConfigsResponse {
+  int32 code = 1;
+  string message = 2;
+  repeated WidetableConfig list = 3;
+  PageResponse page = 4;
+}
+
+// 预览SQL请求
+message PreviewWidetableSQLRequest {
+  uint64 id = 1;
+  int32 limit = 2;  // 预览条数，默认10
+}
+
+message PreviewWidetableSQLResponse {
+  int32 code = 1;
+  string message = 2;
+  string sql = 3;
+}
+
+// 执行查询请求
+message ExecuteWidetableQueryRequest {
+  uint64 id = 1;
+  int32 page = 2;
+  int32 page_size = 3;
+  string extra_condition = 4;  // 追加的WHERE条件
+  string order_by = 5;         // 排序
+}
+
+message ExecuteWidetableQueryResponse {
+  int32 code = 1;
+  string message = 2;
+  repeated string columns = 3;
+  repeated QueryRow rows = 4;
+  int64 total = 5;
+  string execute_time = 6;
+}
+
+// 启动全量同步请求
+message StartWidetableSyncRequest {
+  uint64 id = 1;
+  int32 batch_size = 2;  // 批次大小，默认1000
+}
+
+message StartWidetableSyncResponse {
+  int32 code = 1;
+  string message = 2;
+  uint64 record_id = 3;
+}
+
+message ListWidetableSyncRecordsRequest {
+  uint64 config_id = 1;
+  int32 page = 2;
+  int32 page_size = 3;
+}
+
+message ListWidetableSyncRecordsResponse {
+  int32 code = 1;
+  string message = 2;
+  repeated WidetableSyncRecord list = 3;
+  PageResponse page = 4;
+}

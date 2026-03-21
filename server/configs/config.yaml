@@ -1,0 +1,64 @@
+server:
+  http:
+    addr: 0.0.0.0:8000
+    timeout: 5000000000  # 5秒，单位：纳秒
+  grpc:
+    addr: 0.0.0.0:9000
+    timeout: 5000000000  # 5秒，单位：纳秒
+
+data:
+  database:
+    driver: mysql
+    source: root:root123@tcp(127.0.0.1:3306)/sisyphus?charset=utf8mb4&parseTime=True&loc=Local
+  redis:
+    network: tcp
+    addr: 127.0.0.1:6379
+    password: "redis123"
+    db: 0
+    dial_timeout: 5000000000  # 5秒，单位：纳秒
+    read_timeout: 3000000000  # 3秒，单位：纳秒
+    write_timeout: 3000000000  # 3秒，单位：纳秒
+
+auth:
+  jwt_secret: your-secret-key-change-in-production
+  jwt_expire: 86400  # 24小时
+
+inception:
+  host: 127.0.0.1
+  port: 4000
+  username: root
+  password: ""
+  backup_host: 127.0.0.1
+  backup_port: 3306
+  backup_username: root
+  backup_password: "root123"
+
+partition:
+  add_days: 180  # 提前添加分区的天数(约6个月)
+  max_add_count: 30  # 一次最多添加的分区数量
+
+# 通知渠道配置已迁移至数据库，可在前端「系统设置 → 通知配置」页面管理
+# 支持渠道：企业微信 (wechatwork)、飞书 (feishu)、钉钉 (dingtalk)
+
+ghost:
+  socket_dir: /data/ghost/socket/  # socket文件目录
+  log_dir: /data/ghost/log/         # 日志文件目录
+  panic_dir: /data/ghost/panic/     # panic文件目录
+  binary_path: /usr/local/bin/gh-ost  # gh-ost二进制文件路径
+
+tools:
+  pt_archiver_path: /usr/local/bin/pt-archiver  # pt-archiver二进制文件路径
+  gh_ost_path: /usr/local/bin/gh-ost            # gh-ost二进制文件路径
+  goinception_path: ""                          # goInception二进制文件路径（如果使用本地模式）
+
+telemetry:
+  enabled: false  # 是否启用OpenTelemetry监控
+  otlp_endpoint: "localhost:4317"  # OTLP endpoint地址
+  service_name: "sisyphus"  # 服务名称
+  service_version: "v1.0.0"  # 服务版本
+
+ckcheck:
+  test_host: ""       # ClickHouse测试实例地址（用于ckcheck SQL审核）
+  test_port: 9000     # ClickHouse测试实例端口
+  test_username: "default"  # 测试实例用户名
+  test_password: ""   # 测试实例密码

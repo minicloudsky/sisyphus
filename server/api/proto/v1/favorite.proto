@@ -1,0 +1,119 @@
+syntax = "proto3";
+
+package api.v1;
+
+option go_package = "sisyphus/server/api/v1;v1";
+
+import "google/api/annotations.proto";
+import "proto/v1/common.proto";
+
+// 收藏夹服务
+service FavoriteService {
+  // 创建收藏
+  rpc CreateFavorite (CreateFavoriteRequest) returns (CreateFavoriteResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/favorites"
+      body: "*"
+    };
+  }
+
+  // 更新收藏
+  rpc UpdateFavorite (UpdateFavoriteRequest) returns (CommonResponse) {
+    option (google.api.http) = {
+      put: "/api/v1/favorites/{id}"
+      body: "*"
+    };
+  }
+
+  // 删除收藏
+  rpc DeleteFavorite (DeleteFavoriteRequest) returns (CommonResponse) {
+    option (google.api.http) = {
+      delete: "/api/v1/favorites/{id}"
+    };
+  }
+
+  // 获取收藏详情
+  rpc GetFavorite (GetFavoriteRequest) returns (GetFavoriteResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/favorites/{id}"
+    };
+  }
+
+  // 获取收藏列表
+  rpc ListFavorites (ListFavoritesRequest) returns (ListFavoritesResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/favorites"
+    };
+  }
+
+  // 置顶收藏
+  rpc PinFavorite (PinFavoriteRequest) returns (CommonResponse) {
+    option (google.api.http) = {
+      put: "/api/v1/favorites/{id}/pin"
+    };
+  }
+}
+
+message CreateFavoriteRequest {
+  uint64 instance_id = 1;
+  string database_name = 2;
+  string tag = 3;
+  string sql_text = 4;
+  string name = 5;
+  string db_type = 6;
+}
+
+message CreateFavoriteResponse {
+  uint64 id = 1;
+  string message = 2;
+}
+
+message UpdateFavoriteRequest {
+  uint64 id = 1;
+  uint64 instance_id = 2;
+  string database_name = 3;
+  string tag = 4;
+  string sql_text = 5;
+  string name = 6;
+  string db_type = 7;
+}
+
+message DeleteFavoriteRequest {
+  uint64 id = 1;
+}
+
+message GetFavoriteRequest {
+  uint64 id = 1;
+}
+
+message GetFavoriteResponse {
+  Favorite favorite = 1;
+}
+
+message ListFavoritesRequest {
+  repeated uint64 instance_ids = 1;
+  int32 page = 2;
+  int32 page_size = 3;
+}
+
+message ListFavoritesResponse {
+  repeated Favorite favorites = 1;
+  PageResponse page = 2;
+}
+
+message PinFavoriteRequest {
+  uint64 id = 1;
+}
+
+message Favorite {
+  uint64 id = 1;
+  uint64 instance_id = 2;
+  string database_name = 3;
+  string tag = 4;
+  string sql_text = 5;
+  int32 score = 6;
+  string created_at = 7;
+  string updated_at = 8;
+  string name = 9;
+  string db_type = 10;
+}

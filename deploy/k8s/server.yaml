@@ -1,0 +1,283 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Sisyphus — Backend Server
+#
+# Resources in this file:
+#   ServiceAccount, ConfigMap, Deployment, Service
+#
+# Sensitive credentials (DB password, JWT secret, etc.) should be stored in a
+# Kubernetes Secret and mounted / injected as environment variables.
+# See: docs/deploy/secrets.md for Sealed Secrets / External Secrets setup.
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: sisyphus-server
+  namespace: sisyphus
+  labels:
+    app.kubernetes.io/name: sisyphus-server
+    app.kubernetes.io/component: server
+    app.kubernetes.io/part-of: sisyphus
+automountServiceAccountToken: false
+---
+# ── Application config ────────────────────────────────────────────────────────
+# Replace every <CHANGE_ME> value before applying.
+# Production recommendation: manage this as a Kubernetes Secret (not a
+# ConfigMap) so credentials are encrypted at rest in etcd.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sisyphus-server-config
+  namespace: sisyphus
+  labels:
+    app.kubernetes.io/name: sisyphus-server
+    app.kubernetes.io/component: server
+    app.kubernetes.io/part-of: sisyphus
+data:
+  config.yaml: |
+    server:
+      http:
+        addr: 0.0.0.0:8000
+        timeout: 30s
+      grpc:
+        addr: 0.0.0.0:9000
+        timeout: 30s
+
+    data:
+      database:
+        driver: mysql
+        # Format: user:password@tcp(host:port)/dbname?charset=utf8mb4&parseTime=True&loc=Local
+        source: sisyphus:<CHANGE_ME>@tcp(mysql:3306)/sisyphus?charset=utf8mb4&parseTime=True&loc=Local
+      redis:
+        network: tcp
+        addr: redis:6379
+        password: "<CHANGE_ME>"
+        db: 0
+        dial_timeout: 5000000000
+        read_timeout: 3000000000
+        write_timeout: 3000000000
+
+    auth:
+      jwt_secret: "<CHANGE_ME_USE_32+_RANDOM_CHARS>"
+      jwt_expire: 86400
+
+    inception:
+      host: goinception
+      port: 4000
+      username: root
+      password: ""
+      backup_host: mysql
+      backup_port: 3306
+      backup_username: sisyphus
+      backup_password: "<CHANGE_ME>"
+
+    partition:
+      add_days: 180
+      max_add_count: 30
+
+    # 通知渠道配置已迁移至数据库，可在前端「系统设置 → 通知配置」页面管理
+    # 支持渠道：企业微信 (wechatwork)、飞书 (feishu)、钉钉 (dingtalk)
+
+    ghost:
+      socket_dir: /data/ghost/socket/
+      log_dir: /data/ghost/log/
+      panic_dir: /data/ghost/panic/
+      binary_path: /usr/local/bin/gh-ost
+
+    tools:
+      pt_archiver_path: /usr/local/bin/pt-archiver
+      gh_ost_path: /usr/local/bin/gh-ost
+
+    telemetry:
+      enabled: false
+      otlp_endpoint: ""
+      service_name: sisyphus
+      service_version: v1.0.0
+
+    ckcheck:
+      test_host: ""
+      test_port: 9000
+      test_username: default
+      test_password: ""
+---
+# ── Deployment ────────────────────────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sisyphus-server
+  namespace: sisyphus
+  labels:
+    app.kubernetes.io/name: sisyphus-server
+    app.kubernetes.io/component: server
+    app.kubernetes.io/part-of: sisyphus
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: sisyphus-server
+  # Zero-downtime rolling update: surge one new pod before taking old one down.
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: sisyphus-server
+        app.kubernetes.io/component: server
+        app.kubernetes.io/part-of: sisyphus
+      annotations:
+        # Restart pods automatically when the ConfigMap content changes.
+        checksum/config: "placeholder-update-via-helm-or-kustomize"
+    spec:
+      serviceAccountName: sisyphus-server
+      automountServiceAccountToken: false
+
+      # ── Pod-level security ─────────────────────────────────────────────────
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001       # matches `useradd --uid 1001 sisyphus` in Dockerfile
+        runAsGroup: 1001
+        fsGroup: 1001
+        seccompProfile:
+          type: RuntimeDefault
+
+      # ── High-availability: spread pods across zones and nodes ──────────────
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: sisyphus-server
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: sisyphus-server
+
+      terminationGracePeriodSeconds: 30
+
+      containers:
+        - name: server
+          image: minicloudsky/sisyphus-server:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+            - name: grpc
+              containerPort: 9000
+              protocol: TCP
+
+          # ── Container-level security ───────────────────────────────────────
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+
+          # ── Probes ─────────────────────────────────────────────────────────
+          # startupProbe allows up to 5 min (30 × 10s) for first boot;
+          # liveness/readiness only activate after startup succeeds.
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            failureThreshold: 30
+            periodSeconds: 10
+
+          readinessProbe:
+            # Checks DB and Redis connectivity — failing this removes the pod
+            # from Service endpoints without restarting it.
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+            timeoutSeconds: 3
+
+          livenessProbe:
+            # Lightweight check — only detects hung/deadlocked process.
+            # Higher failureThreshold avoids cascading restarts during
+            # transient downstream outages.
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            failureThreshold: 5
+            timeoutSeconds: 3
+
+          # ── Resources ──────────────────────────────────────────────────────
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+            limits:
+              # CPU limit intentionally omitted to prevent throttling under
+              # burst load. Node-level protection relies on LimitRange defaults
+              # and the cluster's QoS class (Burstable is acceptable here).
+              memory: "1Gi"
+
+          env:
+            - name: TZ
+              value: "Asia/Shanghai"
+            - name: GOMEMLIMIT        # soft memory limit for Go runtime GC tuning
+              valueFrom:
+                resourceFieldRef:
+                  resource: limits.memory
+
+          volumeMounts:
+            - name: config
+              mountPath: /app/configs/config.yaml
+              subPath: config.yaml
+              readOnly: true
+            # emptyDir mounts for paths the app needs to write to
+            - name: tmp
+              mountPath: /tmp
+            - name: ghost-socket
+              mountPath: /data/ghost/socket
+            - name: ghost-log
+              mountPath: /data/ghost/log
+            - name: ghost-panic
+              mountPath: /data/ghost/panic
+
+      volumes:
+        - name: config
+          configMap:
+            name: sisyphus-server-config
+        - name: tmp
+          emptyDir: {}
+        - name: ghost-socket
+          emptyDir: {}
+        - name: ghost-log
+          emptyDir: {}
+        - name: ghost-panic
+          emptyDir: {}
+---
+# ── Service ───────────────────────────────────────────────────────────────────
+apiVersion: v1
+kind: Service
+metadata:
+  name: sisyphus-server
+  namespace: sisyphus
+  labels:
+    app.kubernetes.io/name: sisyphus-server
+    app.kubernetes.io/component: server
+    app.kubernetes.io/part-of: sisyphus
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: sisyphus-server
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http
+      protocol: TCP
+    - name: grpc
+      port: 9000
+      targetPort: grpc
+      protocol: TCP
