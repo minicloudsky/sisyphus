@@ -37,8 +37,6 @@ jobs:
 
   backend:
     name: Backend (Go)
-    needs: changes
-    if: ${{ needs.changes.outputs.backend == 'true' }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -67,8 +65,6 @@ jobs:
 
   frontend:
     name: Frontend (Node.js)
-    needs: changes
-    if: ${{ needs.changes.outputs.frontend == 'true' }}
     runs-on: ubuntu-latest
     defaults:
       run:
